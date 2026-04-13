@@ -8,7 +8,13 @@ def get_models():
     
     models = {
         "logistic_regression": LogisticRegression(max_iter=1000),
-        "random_forest": RandomForestClassifier(n_estimators=100, random_state=42),
+        "random_forest": RandomForestClassifier(
+            n_estimators=300,
+            max_depth=15,
+            min_samples_split=5,
+            random_state=42,
+            n_jobs=-1
+        ),
         "mlp": MLPClassifier(hidden_layer_sizes=(100,), max_iter=300)
     }
 

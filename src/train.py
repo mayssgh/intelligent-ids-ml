@@ -18,6 +18,20 @@ def main():
     X_train, X_test, y_train, y_test, scaler, encoders = preprocess_pipeline(
         FILE_PATH, TARGET
     )
+    from collections import Counter
+
+    print("\nClass distribution BEFORE balancing:")
+    print(Counter(y_train))
+
+    from imblearn.over_sampling import SMOTE
+
+    print("\nApplying SMOTE to balance classes...")
+
+    smote = SMOTE(random_state=42)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    print("\nClass distribution AFTER balancing:")
+    print(Counter(y_train))
 
     # Get models
     models = get_models()
@@ -32,6 +46,9 @@ def main():
 
     # 🔥 Select best model
     best_model = trained_models["random_forest"]
+
+    # ✅ Ensure models folder exists BEFORE saving SHAP
+    os.makedirs("models", exist_ok=True)
 
     # 🔍 Explain model (use small sample for speed)
     explain_model(best_model, X_test[:200])

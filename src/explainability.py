@@ -24,6 +24,10 @@ def explain_model(model, X_sample):
     shap_values = explainer(X_sample)
 
     # Summary plot
-    shap.summary_plot(shap_values, X_sample)
+    import matplotlib.pyplot as plt
+
+    shap.summary_plot(shap_values, X_sample, show=False)
+    plt.savefig("models/shap_summary.png")
+    plt.close()
 
     print("SHAP explanation completed.")

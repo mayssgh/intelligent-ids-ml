@@ -12,7 +12,7 @@ app = FastAPI(
 )
 
 # ---------- Load Model ----------
-MODEL_PATH = "random_forest_model.pkl"
+MODEL_PATH = "models/random_forest.pkl"
 
 if os.path.exists(MODEL_PATH):
     model = joblib.load(MODEL_PATH)
@@ -36,22 +36,35 @@ def home():
 @app.post("/predict")
 def predict(data: InputData):
 
-    features = np.array(data.features).reshape(1, -1)
+    EXPECTED_FEATURES = model.n_features_in_ if model else len(data.features)
+
+    features = np.array(data.features)
+
+    # Auto-fix size for demo
+    if len(features) < EXPECTED_FEATURES:
+        features = np.pad(features, (0, EXPECTED_FEATURES - len(features)))
+    elif len(features) > EXPECTED_FEATURES:
+        features = features[:EXPECTED_FEATURES]
+
+    features = features.reshape(1, -1)
 
     if model is not None:
         prediction = model.predict(features)[0]
         probabilities = model.predict_proba(features)[0]
+
         confidence = float(max(probabilities))
-        is_attack = prediction != 0
+
+        is_attack = prediction != "BENIGN"
     else:
         # fallback demo mode
         score = float(np.mean(np.abs(features)))
         is_attack = score > 0.3
         confidence = 0.9
 
-    result = "Attack Detected" if is_attack else "Benign Traffic"
+    result = str(prediction)
 
     return {
         "prediction": result,
+        "is_attack": is_attack,
         "confidence": round(confidence, 4)
     }

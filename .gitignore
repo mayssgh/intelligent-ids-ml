@@ -1,6 +1,8 @@
 venv/
-data/
 *.pkl
 __pycache__/
 *.pyc
+models/*.pkl
+models/*.png
 .env
+data/

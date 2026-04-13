@@ -1,7 +1,8 @@
-from src.preprocessing import preprocess_pipeline
-from src.models import get_models, train_models
-from src.evaluation import evaluate_all_models
-from src.explainability import explain_model
+from preprocessing import preprocess_pipeline
+from models import get_models, train_models
+from evaluation import evaluate_all_models
+from explainability import explain_model
+from sklearn.model_selection import cross_val_score
 
 import joblib
 import os
@@ -38,6 +39,14 @@ def main():
 
     # Train models
     trained_models = train_models(models, X_train, y_train)
+    print("\nPerforming Cross-Validation on Random Forest...")
+
+    rf_model = trained_models["random_forest"]
+
+    cv_scores = cross_val_score(rf_model, X_train, y_train, cv=5)
+
+    print("Cross-validation scores:", cv_scores)
+    print("Mean CV score:", cv_scores.mean())
 
     print("\nTraining completed.")
 

@@ -1,7 +1,7 @@
-from preprocessing import preprocess_pipeline
-from models import get_models, train_models
-from evaluation import evaluate_all_models
-from explainability import explain_model
+from src.preprocessing import preprocess_pipeline
+from src.models import get_models, train_models
+from src.evaluation import evaluate_all_models
+from src.explainability import explain_model
 
 import joblib
 import os

@@ -1,0 +1,51 @@
+{
+  "models": {
+    "logistic_regression": {
+      "accuracy": 98.6361,
+      "precision": 98.686,
+      "recall": 98.6361,
+      "f1": 98.6467,
+      "auc": 99.8725
+    },
+    "random_forest": {
+      "accuracy": 99.862,
+      "precision": 99.8625,
+      "recall": 99.862,
+      "f1": 99.8621,
+      "auc": 99.9965
+    },
+    "mlp": {
+      "accuracy": 99.4428,
+      "precision": 99.4496,
+      "recall": 99.4428,
+      "f1": 99.4439,
+      "auc": 99.9473
+    }
+  },
+  "best_model": "random_forest",
+  "confusion_matrix": {
+    "tp": 6280,
+    "fp": 11,
+    "fn": 6,
+    "tn": 12546
+  },
+  "cv_scores": [
+    99.83,
+    99.84,
+    99.82,
+    99.84,
+    99.85
+  ],
+  "dataset": {
+    "total": 219743,
+    "train_size": 200900,
+    "test_size": 18843,
+    "after_smote": 200900,
+    "classes": {
+      "DoS Hulk": 4164,
+      "BENIGN": 12557,
+      "DoS slowloris": 1077,
+      "DoS Slowhttptest": 1045
+    }
+  }
+}

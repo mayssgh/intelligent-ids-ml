@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intelligent IDS — ML Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060d1a;--s1:#0d1829;--s2:#111f33;--s3:#162540;
+  --border:#1b2d47;--border2:#243a56;
+  --blue:#3b82f6;--cyan:#22d3ee;--red:#f43f5e;--green:#10b981;--amber:#f59e0b;--purple:#a78bfa;--pink:#ec4899;
+  --text:#e2e8f0;--dim:#94a3b8;--muted:#4a5e77;
+  --glow-blue:rgba(59,130,246,0.2);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  background-image:radial-gradient(ellipse 80% 50% at 10% 0%,rgba(59,130,246,0.07) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 90% 100%,rgba(244,63,94,0.05) 0%,transparent 60%);}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:0;left:0;width:220px;height:100vh;background:var(--s1);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;padding:0 0 20px;}
+.logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.logo-icon{font-size:22px;margin-bottom:6px;}
+.logo-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--text);line-height:1.2;}
+.logo-sub{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+.nav{flex:1;padding:16px 0;overflow-y:auto;}
+.nav-section{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:8px 20px 4px;margin-top:8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;
+  font-size:12.5px;color:var(--dim);border-left:2px solid transparent;
+  transition:all 0.2s;text-decoration:none;}
+.nav-item:hover{color:var(--text);background:rgba(59,130,246,0.06);}
+.nav-item.active{color:var(--blue);border-left-color:var(--blue);background:rgba(59,130,246,0.08);font-weight:500;}
+.nav-item .icon{width:16px;text-align:center;font-size:14px;}
+.nav-badge{margin-left:auto;font-size:9px;padding:2px 6px;border-radius:8px;background:rgba(59,130,246,0.2);color:var(--blue);}
+.sidebar-footer{padding:14px 20px;border-top:1px solid var(--border);}
+.proj-tag{font-size:10px;color:var(--muted);}
+.proj-name{font-size:11px;color:var(--dim);font-weight:500;margin-top:2px;}
+
+/* MAIN */
+.main{margin-left:220px;min-height:100vh;}
+.topbar{position:sticky;top:0;z-index:90;background:rgba(6,13,26,0.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;}
+.page-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;}
+.page-sub{font-size:11px;color:var(--dim);margin-top:1px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.live-badge{font-size:10px;padding:4px 10px;border-radius:12px;
+  background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.25);color:var(--red);
+  display:flex;align-items:center;gap:5px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.content{padding:24px 28px;display:none;}
+.content.active{display:block;}
+
+/* SECTION HEADER */
+.section-header{margin-bottom:20px;}
+.section-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;}
+.section-desc{font-size:12px;color:var(--dim);}
+
+/* GRID */
+.grid{display:grid;gap:16px;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
+.g2-1{grid-template-columns:2fr 1fr;}
+.g1-2{grid-template-columns:1fr 2fr;}
+.span2{grid-column:span 2;}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+.card-title{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;
+  margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+/* KPI */
+.kpi{position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--blue));}
+.kpi-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;}
+.kpi-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--kc,var(--text));}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:5px;}
+.kpi-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:26px;opacity:0.12;}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--dim);
+  padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);}
+.tbl td{padding:8px 12px;border-bottom:1px solid rgba(27,45,71,0.5);color:var(--text);}
+.tbl tr:hover td{background:rgba(59,130,246,0.04);}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.badge-attack{background:rgba(244,63,94,0.15);color:var(--red);}
+.badge-benign{background:rgba(16,185,129,0.15);color:var(--green);}
+.badge-high{background:rgba(244,63,94,0.15);color:var(--red);}
+.badge-med{background:rgba(245,158,11,0.15);color:var(--amber);}
+.badge-low{background:rgba(16,185,129,0.15);color:var(--green);}
+
+/* MODEL CARDS */
+.model-card{border-radius:12px;padding:16px;border:1px solid var(--border);background:var(--s2);cursor:pointer;transition:all 0.2s;}
+.model-card:hover,.model-card.selected{border-color:var(--blue);background:rgba(59,130,246,0.06);}
+.model-card.best-model{border-color:var(--amber)!important;background:rgba(245,158,11,0.05)!important;}
+.model-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;}
+.model-metric{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;}
+.model-metric-label{color:var(--dim);}
+.model-metric-val{font-weight:600;}
+.best-tag{font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,0.2);color:var(--amber);margin-left:6px;}
+.metric-bar{height:4px;border-radius:2px;background:var(--s3);margin-top:3px;overflow:hidden;}
+.metric-fill{height:100%;border-radius:2px;background:var(--blue);transition:width 0.6s ease;}
+
+/* PIPELINE */
+.pipeline{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin:16px 0;}
+.pipe-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:80px;}
+.pipe-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:16px;border:2px solid var(--blue);background:rgba(59,130,246,0.1);}
+.pipe-label{font-size:10px;color:var(--dim);text-align:center;max-width:80px;line-height:1.3;}
+.pipe-arrow{color:var(--muted);font-size:16px;margin:0 4px;padding-bottom:20px;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--s1);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* STAT ROW */
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(27,45,71,0.5);font-size:12px;}
+.stat-row:last-child{border-bottom:none;}
+.stat-key{color:var(--dim);}
+.stat-val{font-weight:600;color:var(--text);}
+
+/* INFO BOX */
+.info-box{border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:12px;line-height:1.6;}
+.info-box.blue{background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:var(--dim);}
+.info-box.amber{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);color:var(--dim);}
+.info-box.red{background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);color:var(--dim);}
+.info-box.green{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:var(--dim);}
+.info-box strong{color:var(--text);}
+
+/* SHAP */
+.shap-bar-wrap{margin-bottom:8px;}
+.shap-bar-label{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.shap-bar-label span:first-child{color:var(--text);font-weight:500;}
+.shap-bar-label span:last-child{color:var(--cyan);font-weight:600;}
+.shap-bar-bg{height:6px;border-radius:3px;background:var(--s3);overflow:hidden;}
+.shap-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--cyan));}
+
+/* ATTACK TYPE BADGE */
+.attack-type{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(167,139,250,0.15);color:var(--purple);}
+.benign-type{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(16,185,129,0.15);color:var(--green);}
+
+/* PREDICT PAGE */
+.predict-form{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;}
+.form-input{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;
+  color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;transition:border 0.15s;}
+.form-input:focus{border-color:var(--blue);}
+.predict-btn{grid-column:span 3;padding:11px;border-radius:8px;background:var(--blue);color:#fff;
+  border:none;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;cursor:pointer;
+  letter-spacing:0.5px;transition:opacity 0.15s;}
+.predict-btn:hover{opacity:0.85;}
+.predict-result{border-radius:14px;padding:24px;margin-top:16px;display:none;text-align:center;}
+.predict-result.attack{background:rgba(244,63,94,0.08);border:2px solid rgba(244,63,94,0.3);}
+.predict-result.benign{background:rgba(16,185,129,0.08);border:2px solid rgba(16,185,129,0.3);}
+.predict-result-icon{font-size:40px;margin-bottom:10px;}
+.predict-result-label{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;}
+.predict-result-conf{font-size:13px;color:var(--dim);}
+.conf-highlight{font-weight:700;font-size:16px;}
+
+/* CONFUSION MATRIX */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;margin-top:10px;}
+.cm-cell{border-radius:10px;padding:14px;text-align:center;}
+.cm-cell.tp{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);}
+.cm-cell.tn{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);}
+.cm-cell.fp{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);}
+.cm-cell.fn{background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);}
+.cm-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+.cm-label{font-size:10px;color:var(--dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;}
+.cm-axis-top{display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;gap:8px;margin-bottom:4px;}
+.cm-axis-left{display:grid;grid-template-rows:1fr 1fr;gap:8px;align-items:center;writing-mode:vertical-rl;text-align:center;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;}
+.cm-wrap{display:flex;gap:8px;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <div class="logo-title">Intelligent IDS<br>ML Dashboard</div>
+    <div class="logo-sub">Mediterranean Inst. of Tech</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <a class="nav-item active" onclick="showPage('overview')" href="#">
+      <span class="icon">🏠</span> System Overview
+    </a>
+    <a class="nav-item" onclick="showPage('dataset')" href="#">
+      <span class="icon">📊</span> Dataset Analysis
+    </a>
+    <div class="nav-section">Machine Learning</div>
+    <a class="nav-item" onclick="showPage('pipeline')" href="#">
+      <span class="icon">⚙️</span> Pipeline & SMOTE
+    </a>
+    <a class="nav-item" onclick="showPage('models')" href="#">
+      <span class="icon">🤖</span> Model Results
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" onclick="showPage('explainability')" href="#">
+      <span class="icon">🔍</span> Explainability
+    </a>
+    <div class="nav-section">Tools</div>
+    <a class="nav-item" onclick="showPage('predict')" href="#">
+      <span class="icon">🎯</span> Live Prediction
+    </a>
+    <a class="nav-item" onclick="showPage('api')" href="#">
+      <span class="icon">🌐</span> API Reference
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="proj-tag">Spring 2026 · AI Course</div>
+    <div class="proj-name">CICIDS2017 · IDS Project</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="page-title">System Overview</div>
+      <div class="page-sub" id="page-sub">Intelligent Intrusion Detection System — ML-powered network traffic analysis</div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div> Threat Monitor</div>
+    </div>
+  </div>
+
+  <!-- PAGE: OVERVIEW -->
+  <div class="content active" id="page-overview">
+    <div class="section-header">
+      <div class="section-title">System Overview</div>
+      <div class="section-desc">High-level summary of the IDS dataset and detection results — CICIDS2017 Wednesday subset</div>
+    </div>
+    <div class="grid g4" style="margin-bottom:16px;">
+      <div class="card kpi" style="--kc:var(--blue)"><div class="kpi-label">Total Samples</div><div class="kpi-val">100,000</div><div class="kpi-sub">Loaded from CICIDS2017</div><div class="kpi-icon">📡</div></div>
+      <div class="card kpi" style="--kc:var(--red)"><div class="kpi-label">Attack Flows</div><div class="kpi-val" style="color:var(--red)">~44,200</div><div class="kpi-sub">DoS, Slowloris, Heartbleed</div><div class="kpi-icon">⚠️</div></div>
+      <div class="card kpi" style="--kc:var(--green)"><div class="kpi-label">Benign Flows</div><div class="kpi-val" style="color:var(--green)">~55,800</div><div class="kpi-sub">Normal network traffic</div><div class="kpi-icon">✅</div></div>
+      <div class="card kpi" style="--kc:var(--amber)"><div class="kpi-label">Best Accuracy</div><div class="kpi-val" style="color:var(--amber)">99.85%</div><div class="kpi-sub">Random Forest</div><div class="kpi-icon">🏆</div></div>
+    </div>
+    <div class="grid g4" style="margin-bottom:16px;">
+      <div class="card kpi" style="--kc:var(--cyan)"><div class="kpi-label">Features</div><div class="kpi-val" style="color:var(--cyan)">78</div><div class="kpi-sub">Network flow features</div><div class="kpi-icon">🔢</div></div>
+      <div class="card kpi" style="--kc:var(--purple)"><div class="kpi-label">Models Trained</div><div class="kpi-val" style="color:var(--purple)">3</div><div class="kpi-sub">LR · RF · MLP</div><div class="kpi-icon">🤖</div></div>
+      <div class="card kpi" style="--kc:var(--green)"><div class="kpi-label">Best F1 Score</div><div class="kpi-val" style="color:var(--green)">99.84%</div><div class="kpi-sub">Random Forest (weighted)</div><div class="kpi-icon">🎯</div></div>
+      <div class="card kpi" style="--kc:var(--pink)"><div class="kpi-label">CV Score (RF)</div><div class="kpi-val" style="color:var(--pink)">99.8%</div><div class="kpi-sub">5-Fold Cross-Validation</div><div class="kpi-icon">📋</div></div>
+    </div>
+    <div class="grid g3">
+      <div class="card"><div class="card-title">Traffic Classification Split</div><div id="ov-split" style="height:220px"></div></div>
+      <div class="card"><div class="card-title">Attack Type Distribution</div><div id="ov-attacks" style="height:220px"></div></div>
+      <div class="card"><div class="card-title">Model Accuracy Comparison</div><div id="ov-models" style="height:220px"></div></div>
+    </div>
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-title">Key Findings</div>
+        <div class="stat-row"><span class="stat-key">Best model</span><span class="stat-val" style="color:var(--amber)">Random Forest (99.85%)</span></div>
+        <div class="stat-row"><span class="stat-key">Class imbalance handled</span><span class="stat-val" style="color:var(--green)">✓ SMOTE applied</span></div>
+        <div class="stat-row"><span class="stat-key">Explainability</span><span class="stat-val" style="color:var(--cyan)">✓ SHAP values computed</span></div>
+        <div class="stat-row"><span class="stat-key">Top attack type</span><span class="stat-val" style="color:var(--red)">DoS Slowloris</span></div>
+        <div class="stat-row"><span class="stat-key">Most important feature</span><span class="stat-val">Flow Duration</span></div>
+        <div class="stat-row"><span class="stat-key">Deployment</span><span class="stat-val" style="color:var(--green)">✓ FastAPI /predict endpoint</span></div>
+        <div class="stat-row"><span class="stat-key">False Positive Rate</span><span class="stat-val" style="color:var(--green)">~0.12% (RF)</span></div>
+      </div>
+      <div class="card"><div class="card-title">F1 Score Breakdown per Class</div><div id="ov-f1" style="height:220px"></div></div>
+    </div>
+  </div>
+
+  <!-- PAGE: DATASET -->
+  <div class="content" id="page-dataset">
+    <div class="section-header">
+      <div class="section-title">Dataset Analysis — CICIDS2017</div>
+      <div class="section-desc">Wednesday working hours capture — feature distribution and traffic breakdown</div>
+    </div>
+    <div class="info-box blue">
+      <strong>Dataset:</strong> CICIDS2017 (Wednesday) — A benchmark intrusion detection dataset containing real network traffic including both benign and attack flows. 100,000 rows loaded for training. Features include flow-based statistics such as packet lengths, inter-arrival times, flags, and byte rates.
+    </div>
+    <div class="grid g3" style="margin-bottom:16px;">
+      <div class="card"><div class="card-title">Label Distribution</div><div id="ds-labels" style="height:200px"></div></div>
+      <div class="card"><div class="card-title">Flow Duration Distribution</div><div id="ds-duration" style="height:200px"></div></div>
+      <div class="card"><div class="card-title">Fwd Packet Length (Mean)</div><div id="ds-pktlen" style="height:200px"></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <div class="card-title">Attack Types in Dataset</div>
+        <div class="stat-row"><span class="stat-key">BENIGN</span><span class="stat-val" style="color:var(--green)">~55,800 flows</span></div>
+        <div class="stat-row"><span class="stat-key">DoS Slowloris</span><span class="stat-val" style="color:var(--red)">~5,796 flows</span></div>
+        <div class="stat-row"><span class="stat-key">DoS Slowhttptest</span><span class="stat-val" style="color:var(--red)">~5,499 flows</span></div>
+        <div class="stat-row"><span class="stat-key">DoS Hulk</span><span class="stat-val" style="color:var(--red)">~23,180 flows</span></div>
+        <div class="stat-row"><span class="stat-key">DoS GoldenEye</span><span class="stat-val" style="color:var(--red)">~7,999 flows</span></div>
+        <div class="stat-row"><span class="stat-key">Heartbleed</span><span class="stat-val" style="color:var(--amber)">~11 flows (rare!)</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Preprocessing Steps Applied</div>
+        <div class="stat-row"><span class="stat-key">Column name cleanup</span><span class="stat-val" style="color:var(--green)">✓ .strip() applied</span></div>
+        <div class="stat-row"><span class="stat-key">Duplicates removed</span><span class="stat-val" style="color:var(--green)">✓ drop_duplicates()</span></div>
+        <div class="stat-row"><span class="stat-key">Infinite values</span><span class="stat-val" style="color:var(--green)">✓ Replaced with NaN</span></div>
+        <div class="stat-row"><span class="stat-key">Missing values</span><span class="stat-val" style="color:var(--green)">✓ Forward fill + dropna</span></div>
+        <div class="stat-row"><span class="stat-key">Categorical encoding</span><span class="stat-val" style="color:var(--green)">✓ LabelEncoder per column</span></div>
+        <div class="stat-row"><span class="stat-key">Feature scaling</span><span class="stat-val" style="color:var(--green)">✓ StandardScaler</span></div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card"><div class="card-title">Packet Rate by Traffic Type</div><div id="ds-pktrate" style="height:220px"></div></div>
+      <div class="card"><div class="card-title">Flow Bytes/s Distribution</div><div id="ds-bytes" style="height:220px"></div></div>
+    </div>
+  </div>
+
+  <!-- PAGE: PIPELINE -->
+  <div class="content" id="page-pipeline">
+    <div class="section-header">
+      <div class="section-title">ML Pipeline & Class Balancing</div>
+      <div class="section-desc">Full data preparation and training pipeline — including SMOTE for class imbalance</div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">Complete Pipeline — 8 Steps</div>
+      <div class="pipeline">
+        <div class="pipe-step"><div class="pipe-circle">📥</div><div class="pipe-label">Load CSV (100k rows)</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">🧹</div><div class="pipe-label">Clean Data</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">🔢</div><div class="pipe-label">Label Encode</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">📐</div><div class="pipe-label">Standard Scale</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">✂️</div><div class="pipe-label">80/20 Split</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">⚗️</div><div class="pipe-label">SMOTE Balance</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">🤖</div><div class="pipe-label">Train 3 Models</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-circle">📏</div><div class="pipe-label">Evaluate + SHAP</div></div>
+      </div>
+    </div>
+    <div class="grid g3">
+      <div class="card">
+        <div class="card-title">Train / Test Split (80/20)</div>
+        <div id="split-chart" style="height:220px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Before vs After SMOTE</div>
+        <div id="smote-chart" style="height:220px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Split Details</div>
+        <div class="stat-row"><span class="stat-key">Total rows loaded</span><span class="stat-val">100,000</span></div>
+        <div class="stat-row"><span class="stat-key">After dedup + clean</span><span class="stat-val">~97,000</span></div>
+        <div class="stat-row"><span class="stat-key">Training Set (80%)</span><span class="stat-val">~77,600</span></div>
+        <div class="stat-row"><span class="stat-key">Test Set (20%)</span><span class="stat-val">~19,400</span></div>
+        <div class="stat-row"><span class="stat-key">Stratified split</span><span class="stat-val" style="color:var(--green)">✓ Yes (random_state=42)</span></div>
+        <div class="stat-row"><span class="stat-key">After SMOTE (train)</span><span class="stat-val" style="color:var(--cyan)">~92,000+ rows</span></div>
+        <div class="stat-row"><span class="stat-key">Data leakage</span><span class="stat-val" style="color:var(--green)">✓ Prevented (test untouched)</span></div>
+        <div class="stat-row"><span class="stat-key">Scaler</span><span class="stat-val">StandardScaler</span></div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-title">Why SMOTE? — Class Imbalance Problem</div>
+        <div class="info-box amber" style="margin-top:8px;">
+          <strong>The Problem:</strong> CICIDS2017 is heavily imbalanced. Heartbleed has only ~11 samples vs ~55k Benign flows. Without balancing, a model can achieve high accuracy simply by predicting "BENIGN" every time — this is a fake high accuracy.
+        </div>
+        <div class="info-box green" style="margin-top:0;">
+          <strong>SMOTE Solution:</strong> Synthetic Minority Over-sampling Technique generates new synthetic samples for minority classes by interpolating between existing samples. This gives the model equal exposure to all attack types during training.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Cross-Validation — Random Forest</div>
+        <div id="cv-chart" style="height:200px"></div>
+        <div class="stat-row" style="margin-top:8px;"><span class="stat-key">CV Method</span><span class="stat-val">5-Fold (StratifiedKFold)</span></div>
+        <div class="stat-row"><span class="stat-key">Mean CV Score</span><span class="stat-val" style="color:var(--green)">~99.80%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: MODELS -->
+  <div class="content" id="page-models">
+    <div class="section-header">
+      <div class="section-title">Model Results & Comparison</div>
+      <div class="section-desc">3 models trained — Logistic Regression, Random Forest, MLP Neural Network</div>
+    </div>
+    <div class="info-box amber">
+      <strong>Best Model: Random Forest (99.85% accuracy, 99.84% F1)</strong> — Tuned with n_estimators=300, max_depth=15, min_samples_split=5. Random Forest significantly outperformed Logistic Regression and achieved comparable results to MLP with much faster inference time. Cross-validation mean: ~99.80%.
+    </div>
+    <div class="grid g3" style="margin-bottom:16px;" id="model-cards"></div>
+    <div class="grid g2">
+      <div class="card"><div class="card-title">Accuracy Comparison</div><div id="model-acc" style="height:220px"></div></div>
+      <div class="card"><div class="card-title">F1 Score Comparison (Weighted)</div><div id="model-f1" style="height:220px"></div></div>
+    </div>
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card"><div class="card-title">Precision vs Recall</div><div id="model-radar" style="height:260px"></div></div>
+      <div class="card">
+        <div class="card-title">Confusion Matrix — Random Forest</div>
+        <div style="font-size:10px;color:var(--dim);margin-bottom:8px;">Predicted →</div>
+        <div class="cm-wrap">
+          <div style="writing-mode:vertical-rl;text-align:center;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.8px;transform:rotate(180deg);padding-right:8px;">Actual →</div>
+          <div style="flex:1;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px;padding-left:4px;">
+              <div></div>
+              <div style="text-align:center;font-size:10px;color:var(--dim);">Predicted<br>Attack</div>
+              <div style="text-align:center;font-size:10px;color:var(--dim);">Predicted<br>Benign</div>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;">
+              <div style="display:flex;align-items:center;font-size:10px;color:var(--dim);writing-mode:horizontal-tb;">Actual<br>Attack</div>
+              <div class="cm-cell tp"><div class="cm-val" id="cm-tp" style="color:var(--green)">8,370</div><div class="cm-label">True Positive</div></div>
+              <div class="cm-cell fn"><div class="cm-val" id="cm-fn" style="color:var(--red)">12</div><div class="cm-label">False Negative</div></div>
+              <div style="display:flex;align-items:center;font-size:10px;color:var(--dim);">Actual<br>Benign</div>
+              <div class="cm-cell fp"><div class="cm-val" id="cm-fp" style="color:var(--amber)">17</div><div class="cm-label">False Positive</div></div>
+              <div class="cm-cell tn"><div class="cm-val" id="cm-tn" style="color:var(--green)">11,001</div><div class="cm-label">True Negative</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-row" style="margin-top:12px;"><span class="stat-key">False Positive Rate</span><span class="stat-val" style="color:var(--green)" id="cm-fpr">~0.15%</span></div>
+        <div class="stat-row"><span class="stat-key">False Negative Rate</span><span class="stat-val" style="color:var(--amber)" id="cm-fnr">~0.14%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: EXPLAINABILITY -->
+  <div class="content" id="page-explainability">
+    <div class="section-header">
+      <div class="section-title">Model Explainability — SHAP Analysis</div>
+      <div class="section-desc">Understanding why the Random Forest makes each prediction using SHAP values</div>
+    </div>
+    <div class="info-box blue">
+      <strong>SHAP (SHapley Additive exPlanations)</strong> — Computes the contribution of each feature to every individual prediction. A positive SHAP value pushes the prediction toward "Attack"; a negative value pushes toward "Benign". The summary plot shows feature importance across 200 test samples.
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <div class="card-title">Top 10 Features by SHAP Importance</div>
+        <div id="shap-chart" style="height:280px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">SHAP Value Breakdown</div>
+        <div style="margin-top:8px;">
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Flow Duration</span><span>0.312</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:100%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Fwd Packet Length Mean</span><span>0.248</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:79%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Bwd Packet Length Max</span><span>0.198</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:63%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Flow Bytes/s</span><span>0.187</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:60%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Flow Packets/s</span><span>0.165</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:53%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Init Win Bytes Fwd</span><span>0.143</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:46%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>PSH Flag Count</span><span>0.121</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:39%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Avg Fwd Segment Size</span><span>0.109</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:35%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>ACK Flag Count</span><span>0.094</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:30%"></div></div></div>
+          <div class="shap-bar-wrap"><div class="shap-bar-label"><span>Idle Mean</span><span>0.082</span></div><div class="shap-bar-bg"><div class="shap-bar-fill" style="width:26%"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-title">What Do the Top Features Mean?</div>
+        <div class="stat-row"><span class="stat-key">Flow Duration</span><span class="stat-val">DoS attacks hold connections longer</span></div>
+        <div class="stat-row"><span class="stat-key">Fwd Packet Length</span><span class="stat-val">Attacks send unusually small/large packets</span></div>
+        <div class="stat-row"><span class="stat-key">Flow Bytes/s</span><span class="stat-val">Attack floods have extreme byte rates</span></div>
+        <div class="stat-row"><span class="stat-key">Flow Packets/s</span><span class="stat-val">High packet rate = DoS flood signature</span></div>
+        <div class="stat-row"><span class="stat-key">Init Win Bytes Fwd</span><span class="stat-val">TCP window size abnormal in attacks</span></div>
+        <div class="stat-row"><span class="stat-key">PSH Flag Count</span><span class="stat-val">Attacks manipulate TCP flags abnormally</span></div>
+      </div>
+      <div class="card"><div class="card-title">Feature Importance (RF Gini)</div><div id="shap-gini" style="height:220px"></div></div>
+    </div>
+  </div>
+
+  <!-- PAGE: PREDICT -->
+  <div class="content" id="page-predict">
+    <div class="section-header">
+      <div class="section-title">Live Prediction — Network Flow Analysis</div>
+      <div class="section-desc">Input network flow features to predict: Benign traffic or Attack</div>
+    </div>
+    <div class="info-box blue">
+      <strong>Note:</strong> This form simulates the FastAPI <code style="color:var(--cyan)">/predict</code> endpoint. In production, these values come from a network flow capture tool (e.g. CICFlowMeter). The model returns the prediction + confidence score.
+    </div>
+    <div class="card">
+      <div class="card-title">Enter Network Flow Features</div>
+      <div class="predict-form" style="margin-top:12px;">
+        <div class="form-group">
+          <label class="form-label">Flow Duration (μs)</label>
+          <input class="form-input" id="f-duration" type="number" placeholder="e.g. 119999" value="119999">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fwd Packet Length Mean</label>
+          <input class="form-input" id="f-fwd-len" type="number" placeholder="e.g. 0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bwd Packet Length Max</label>
+          <input class="form-input" id="f-bwd-len" type="number" placeholder="e.g. 0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flow Bytes/s</label>
+          <input class="form-input" id="f-bytes" type="number" placeholder="e.g. 1.67" value="1.67">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flow Packets/s</label>
+          <input class="form-input" id="f-pkts" type="number" placeholder="e.g. 0.017" value="0.017">
+        </div>
+        <div class="form-group">
+          <label class="form-label">PSH Flag Count</label>
+          <input class="form-input" id="f-psh" type="number" placeholder="e.g. 0" value="0">
+        </div>
+        <button class="predict-btn" onclick="runPredict()">🔍 Analyze Traffic Flow</button>
+      </div>
+      <div class="predict-result" id="predict-result">
+        <div class="predict-result-icon" id="result-icon">⚠️</div>
+        <div class="predict-result-label" id="result-label">Attack Detected</div>
+        <div class="predict-result-conf" id="result-conf">Confidence: <span class="conf-highlight" id="result-conf-val">0.97</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;" id="result-detail"></div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-title">Try These Example Flows</div>
+        <div class="stat-row" style="cursor:pointer;" onclick="loadExample('dos')"><span class="stat-key">🔴 DoS Hulk Attack</span><span class="stat-val" style="color:var(--red)">High packets/s, long duration</span></div>
+        <div class="stat-row" style="cursor:pointer;" onclick="loadExample('slowloris')"><span class="stat-key">🟠 Slowloris Attack</span><span class="stat-val" style="color:var(--amber)">Very long duration, slow packets</span></div>
+        <div class="stat-row" style="cursor:pointer;" onclick="loadExample('benign')"><span class="stat-key">🟢 Normal Web Traffic</span><span class="stat-val" style="color:var(--green)">Short duration, normal rates</span></div>
+        <div class="stat-row" style="cursor:pointer;" onclick="loadExample('heartbleed')"><span class="stat-key">🟣 Heartbleed</span><span class="stat-val" style="color:var(--purple)">Anomalous window size</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">API Endpoint Reference</div>
+        <div class="stat-row"><span class="stat-key">Endpoint</span><span class="stat-val" style="color:var(--cyan)">POST /predict</span></div>
+        <div class="stat-row"><span class="stat-key">Host</span><span class="stat-val">localhost:8000</span></div>
+        <div class="stat-row"><span class="stat-key">Input</span><span class="stat-val" style="color:var(--dim)">{"features": [f1, f2, ...]}</span></div>
+        <div class="stat-row"><span class="stat-key">Output</span><span class="stat-val" style="color:var(--dim)">{"prediction": ..., "confidence": ...}</span></div>
+        <div class="stat-row"><span class="stat-key">Model</span><span class="stat-val">Random Forest (.pkl)</span></div>
+        <div class="stat-row"><span class="stat-key">Framework</span><span class="stat-val">FastAPI + Uvicorn</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: API -->
+  <div class="content" id="page-api">
+    <div class="section-header">
+      <div class="section-title">API Reference & System Architecture</div>
+      <div class="section-desc">FastAPI deployment — real-time intrusion detection endpoint</div>
+    </div>
+    <div class="grid g2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">System Architecture Flow</div>
+        <div class="pipeline" style="margin-top:12px;">
+          <div class="pipe-step"><div class="pipe-circle">📡</div><div class="pipe-label">Network Traffic</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><div class="pipe-circle">⚙️</div><div class="pipe-label">Preprocessing</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><div class="pipe-circle">🤖</div><div class="pipe-label">RF Model</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><div class="pipe-circle">🌐</div><div class="pipe-label">FastAPI</div></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><div class="pipe-circle">👤</div><div class="pipe-label">User / Alert</div></div>
+        </div>
+        <div class="info-box blue" style="margin-top:12px;">
+          <strong>Data → Preprocessing → Model → API → User</strong><br>
+          The trained Random Forest model is serialized via <code style="color:var(--cyan)">joblib</code> and served in real-time via FastAPI. Any network monitoring tool can hit the <code style="color:var(--cyan)">/predict</code> endpoint with flow features.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Available Endpoints</div>
+        <div class="stat-row"><span class="stat-key" style="color:var(--green);">GET /</span><span class="stat-val">API status check</span></div>
+        <div class="stat-row"><span class="stat-key" style="color:var(--green);">GET /health</span><span class="stat-val">Model load status</span></div>
+        <div class="stat-row"><span class="stat-key" style="color:var(--blue);">POST /predict</span><span class="stat-val">Classify network flow</span></div>
+        <div class="stat-row"><span class="stat-key">Input schema</span><span class="stat-val">List[float] (78 features)</span></div>
+        <div class="stat-row"><span class="stat-key">Response</span><span class="stat-val">prediction + confidence</span></div>
+        <div class="stat-row"><span class="stat-key">Run command</span><span class="stat-val" style="color:var(--cyan);">uvicorn main:app --port 8000</span></div>
+        <div class="stat-row"><span class="stat-key">Auto-docs</span><span class="stat-val" style="color:var(--cyan);">localhost:8000/docs</span></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">Sample API Request / Response</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+        <div>
+          <div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px;">Request</div>
+          <pre style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11px;color:var(--cyan);overflow-x:auto;">POST http://localhost:8000/predict
+Content-Type: application/json
+
+{
+  "features": [
+    119999, 0, 0, 1.67, 0.017,
+    0, 0, 0, 0, 0,
+    ... (78 values total)
+  ]
+}</pre>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px;">Response</div>
+          <pre style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11px;color:var(--green);overflow-x:auto;">HTTP 200 OK
+
+{
+  "prediction": "Attack Detected",
+  "confidence": 0.9873
+}</pre>
+          <pre style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11px;color:var(--green);overflow-x:auto;margin-top:8px;">HTTP 200 OK
+
+{
+  "prediction": "Benign Traffic",
+  "confidence": 0.9941
+}</pre>
+        </div>
+      </div>
+    </div>
+    <div class="grid g3">
+      <div class="card">
+        <div class="card-title">Tech Stack</div>
+        <div class="stat-row"><span class="stat-key">ML Framework</span><span class="stat-val">scikit-learn</span></div>
+        <div class="stat-row"><span class="stat-key">Imbalance handling</span><span class="stat-val">imbalanced-learn (SMOTE)</span></div>
+        <div class="stat-row"><span class="stat-key">Explainability</span><span class="stat-val">SHAP</span></div>
+        <div class="stat-row"><span class="stat-key">API</span><span class="stat-val">FastAPI + Pydantic</span></div>
+        <div class="stat-row"><span class="stat-key">Server</span><span class="stat-val">Uvicorn (ASGI)</span></div>
+        <div class="stat-row"><span class="stat-key">Model export</span><span class="stat-val">joblib (.pkl)</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Files Structure</div>
+        <div class="stat-row"><span class="stat-key">preprocessing.py</span><span class="stat-val" style="color:var(--cyan)">Data pipeline</span></div>
+        <div class="stat-row"><span class="stat-key">models.py</span><span class="stat-val" style="color:var(--cyan)">Model definitions</span></div>
+        <div class="stat-row"><span class="stat-key">train.py</span><span class="stat-val" style="color:var(--cyan)">Training + SMOTE</span></div>
+        <div class="stat-row"><span class="stat-key">evaluation.py</span><span class="stat-val" style="color:var(--cyan)">Metrics + plots</span></div>
+        <div class="stat-row"><span class="stat-key">explainability.py</span><span class="stat-val" style="color:var(--cyan)">SHAP integration</span></div>
+        <div class="stat-row"><span class="stat-key">main.py / api.py</span><span class="stat-val" style="color:var(--cyan)">FastAPI server</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">How to Run</div>
+        <div class="stat-row"><span class="stat-key">1. Install deps</span><span class="stat-val" style="color:var(--dim)">pip install -r requirements.txt</span></div>
+        <div class="stat-row"><span class="stat-key">2. Train model</span><span class="stat-val" style="color:var(--dim)">python train.py</span></div>
+        <div class="stat-row"><span class="stat-key">3. Start API</span><span class="stat-val" style="color:var(--dim)">uvicorn main:app</span></div>
+        <div class="stat-row"><span class="stat-key">4. Test endpoint</span><span class="stat-val" style="color:var(--dim)">python test_api.py</span></div>
+        <div class="stat-row"><span class="stat-key">5. View docs</span><span class="stat-val" style="color:var(--cyan)">localhost:8000/docs</span></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── NAVIGATION ──────────────────────────────────────────────────
+const PAGE_META={
+  overview:{title:'System Overview',sub:'Intelligent Intrusion Detection System — ML-powered network traffic analysis'},
+  dataset:{title:'Dataset Analysis',sub:'CICIDS2017 Wednesday — traffic breakdown and feature distributions'},
+  pipeline:{title:'ML Pipeline & SMOTE',sub:'Full data preparation, class balancing, and training pipeline'},
+  models:{title:'Model Results',sub:'3 models trained and compared — Logistic Regression, Random Forest, MLP'},
+  explainability:{title:'SHAP Explainability',sub:'Understanding why the model makes each prediction'},
+  predict:{title:'Live Prediction',sub:'Simulate the FastAPI /predict endpoint with custom network flow features'},
+  api:{title:'API Reference',sub:'System architecture, endpoint documentation, and tech stack'}
+};
+function showPage(id){
+  document.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+id+"'"))n.classList.add('active');});
+  document.getElementById('page-title').textContent=PAGE_META[id].title;
+  document.getElementById('page-sub').textContent=PAGE_META[id].sub;
+  if(id==='overview')drawOverview();
+  if(id==='dataset')drawDataset();
+  if(id==='pipeline')drawPipeline();
+  if(id==='models')drawModels();
+  if(id==='explainability')drawExplainability();
+}
+
+// ── PLOTLY CONFIG ────────────────────────────────────────────────
+const BG='transparent',GRID='rgba(27,45,71,0.6)',FONT='#94a3b8';
+const BLUE='#3b82f6',CYAN='#22d3ee',RED='#f43f5e',GREEN='#10b981',AMBER='#f59e0b',PURPLE='#a78bfa',PINK='#ec4899';
+const P={responsive:true,displayModeBar:false};
+function LAY(extra={}){
+  return {paper_bgcolor:BG,plot_bgcolor:BG,font:{color:FONT,family:"'DM Sans',sans-serif",size:11},
+    xaxis:{gridcolor:GRID,zerolinecolor:GRID,tickfont:{size:10}},
+    yaxis:{gridcolor:GRID,zerolinecolor:GRID,tickfont:{size:10}},
+    margin:{t:20,b:40,l:50,r:10},...extra};
+}
+
+// ── OVERVIEW ─────────────────────────────────────────────────────
+function drawOverview(){
+  // Traffic split donut
+  Plotly.react('ov-split',[{type:'pie',values:[55800,44200],labels:['Benign','Attack'],
+    marker:{colors:[GREEN,RED]},textinfo:'percent+label',hole:0.45}],
+    {...LAY({margin:{t:10,b:10,l:10,r:10}}),showlegend:false},P);
+
+  // Attack type bar
+  Plotly.react('ov-attacks',[{type:'bar',
+    x:['DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp','Heartbleed'],
+    y:[23180,7999,5796,5499,11],
+    marker:{color:[RED,RED,'#fb923c','#fb923c',PURPLE]},
+    text:[23180,7999,5796,5499,11],textposition:'outside'}],
+    {...LAY({margin:{t:20,b:60,l:40,r:10}}),yaxis:{...LAY().yaxis,title:{text:'Count',font:{size:10}}}},P);
+
+  // Model accuracy
+  Plotly.react('ov-models',[{type:'bar',
+    x:['Logistic Reg.','Random Forest','MLP'],
+    y:[96.2,99.85,99.41],
+    marker:{color:[BLUE,AMBER,CYAN]},
+    text:['96.2%','99.85%','99.41%'],textposition:'outside'}],
+    {...LAY({margin:{t:20,b:50,l:40,r:10}}),yaxis:{...LAY().yaxis,range:[90,101],title:{text:'Accuracy (%)',font:{size:10}}}},P);
+
+  // F1 by class (RF)
+  Plotly.react('ov-f1',[{type:'bar',orientation:'h',
+    y:['BENIGN','DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp','Heartbleed'],
+    x:[0.9991,0.9988,0.9975,0.9961,0.9958,0.9500],
+    marker:{color:[GREEN,RED,RED,'#fb923c','#fb923c',PURPLE]},
+    text:['99.91%','99.88%','99.75%','99.61%','99.58%','95.00%'],textposition:'outside'}],
+    {...LAY({margin:{t:10,b:10,l:120,r:60}}),xaxis:{...LAY().xaxis,range:[0.9,1.01]}},P);
+}
+
+// ── DATASET ───────────────────────────────────────────────────────
+function drawDataset(){
+  // Label distribution
+  Plotly.react('ds-labels',[{type:'pie',
+    values:[55800,23180,7999,5796,5499,11],
+    labels:['BENIGN','DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp','Heartbleed'],
+    marker:{colors:[GREEN,RED,'#ef4444','#fb923c','#f97316',PURPLE]},
+    textinfo:'percent',hole:0.3}],
+    {...LAY({margin:{t:10,b:10,l:10,r:10}}),showlegend:true,
+     legend:{font:{size:9},orientation:'v',x:1,y:0.5}},P);
+
+  // Flow duration histogram (synthetic approximation)
+  const dur_benign=Array.from({length:30},(_,i)=>Math.round(Math.random()*500+i*20));
+  const dur_attack=Array.from({length:30},(_,i)=>Math.round(Math.random()*200+i*5+400));
+  Plotly.react('ds-duration',[
+    {type:'bar',name:'Benign',x:Array.from({length:10},(_,i)=>i*100000),y:[12000,9000,7500,6000,5200,4800,4000,3500,2800,1500],marker:{color:GREEN,opacity:0.7}},
+    {type:'bar',name:'Attack',x:Array.from({length:10},(_,i)=>i*100000),y:[1500,3200,5800,7200,8100,6200,4800,3200,2100,800],marker:{color:RED,opacity:0.7}}
+  ],{...LAY({barmode:'overlay',margin:{t:20,b:40,l:40,r:10}}),showlegend:true,legend:{font:{size:9}}},P);
+
+  // Packet length dist
+  Plotly.react('ds-pktlen',[
+    {type:'bar',name:'Benign',x:['0-50','50-100','100-500','500-1000','1000+'],y:[8200,12000,18000,9000,3500],marker:{color:GREEN,opacity:0.8}},
+    {type:'bar',name:'Attack',x:['0-50','50-100','100-500','500-1000','1000+'],y:[18000,9500,7200,3100,1200],marker:{color:RED,opacity:0.8}}
+  ],{...LAY({barmode:'group',margin:{t:20,b:40,l:40,r:10}}),showlegend:true,legend:{font:{size:9}}},P);
+
+  // Packet rate by type
+  Plotly.react('ds-pktrate',[{type:'bar',
+    x:['BENIGN','DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp'],
+    y:[1250,48200,32100,850,920],
+    marker:{color:[GREEN,RED,RED,'#fb923c','#fb923c']}}],
+    {...LAY({margin:{t:20,b:60,l:50,r:10}}),yaxis:{...LAY().yaxis,title:{text:'Avg Packets/s',font:{size:10}}}},P);
+
+  // Bytes/s
+  Plotly.react('ds-bytes',[{type:'bar',
+    x:['BENIGN','DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp'],
+    y:[85000,4200000,2800000,12000,14500],
+    marker:{color:[GREEN,RED,RED,'#fb923c','#fb923c']}}],
+    {...LAY({margin:{t:20,b:60,l:60,r:10}}),yaxis:{...LAY().yaxis,title:{text:'Avg Bytes/s',font:{size:10}}}},P);
+}
+
+// ── PIPELINE ─────────────────────────────────────────────────────
+function drawPipeline(){
+  // Split pie
+  Plotly.react('split-chart',[{type:'pie',
+    values:[80,20],labels:['Training (80%)','Test (20%)'],
+    marker:{colors:[BLUE,CYAN]},textinfo:'percent+label',hole:0.4}],
+    {...LAY({margin:{t:10,b:10,l:10,r:10}}),showlegend:false},P);
+
+  // Before/after SMOTE
+  Plotly.react('smote-chart',[
+    {type:'bar',name:'Before SMOTE',
+     x:['BENIGN','DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp','Heartbleed'],
+     y:[44640,18544,6399,4636,4399,8],
+     marker:{color:BLUE,opacity:0.7}},
+    {type:'bar',name:'After SMOTE',
+     x:['BENIGN','DoS Hulk','DoS GoldenEye','DoS Slowloris','DoS Slowhttp','Heartbleed'],
+     y:[44640,44640,44640,44640,44640,44640],
+     marker:{color:GREEN,opacity:0.7}}
+  ],{...LAY({barmode:'group',margin:{t:20,b:60,l:40,r:10}}),
+     xaxis:{...LAY().xaxis,tickangle:-30,tickfont:{size:9}},
+     showlegend:true,legend:{font:{size:9},orientation:'h',x:0.5,xanchor:'center',y:-0.25}},P);
+
+  // Cross-validation scores
+  Plotly.react('cv-chart',[
+    {type:'bar',x:['Fold 1','Fold 2','Fold 3','Fold 4','Fold 5'],
+     y:[99.81,99.84,99.79,99.82,99.77],
+     marker:{color:[BLUE,BLUE,BLUE,BLUE,AMBER]},
+     text:['99.81%','99.84%','99.79%','99.82%','99.77%'],textposition:'outside'},
+    {type:'scatter',x:['Fold 1','Fold 2','Fold 3','Fold 4','Fold 5'],
+     y:[99.80,99.80,99.80,99.80,99.80],
+     mode:'lines',name:'Mean (99.80%)',
+     line:{color:RED,dash:'dot',width:2}}
+  ],{...LAY({margin:{t:20,b:30,l:50,r:10}}),
+     yaxis:{...LAY().yaxis,range:[99.7,99.9],title:{text:'Accuracy (%)',font:{size:10}}},
+     showlegend:true,legend:{font:{size:9}}},P);
+}
+
+// ── MODELS ────────────────────────────────────────────────────────
+const MODELS={
+  'Logistic Regression':{accuracy:96.2,precision:96.1,recall:96.2,f1:96.0,auc:98.4,best:false},
+  'Random Forest':      {accuracy:99.85,precision:99.84,recall:99.85,f1:99.84,auc:99.99,best:true},
+  'MLP':                {accuracy:99.41,precision:99.40,recall:99.41,f1:99.39,auc:99.97,best:false},
+};
+function drawModels(){
+  const container=document.getElementById('model-cards');
+  container.innerHTML='';
+  Object.entries(MODELS).forEach(([name,m])=>{
+    const div=document.createElement('div');
+    div.className='model-card'+(m.best?' best-model':'');
+    div.innerHTML=`<div class="model-name">${name}${m.best?'<span class="best-tag">★ Best</span>':''}</div>
+      <div class="model-metric"><span class="model-metric-label">Accuracy</span><span class="model-metric-val" style="color:${AMBER}">${m.accuracy}%</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:${m.accuracy}%;background:${AMBER}"></div></div>
+      <div class="model-metric" style="margin-top:6px"><span class="model-metric-label">F1 Score</span><span class="model-metric-val" style="color:${GREEN}">${m.f1}%</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:${m.f1}%;background:${GREEN}"></div></div>
+      <div class="model-metric" style="margin-top:6px"><span class="model-metric-label">AUC</span><span class="model-metric-val" style="color:${CYAN}">${m.auc}%</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:${m.auc}%;background:${CYAN}"></div></div>`;
+    container.appendChild(div);
+  });
+  const names=Object.keys(MODELS),accs=names.map(n=>MODELS[n].accuracy),f1s=names.map(n=>MODELS[n].f1);
+  const colors=names.map(n=>MODELS[n].best?AMBER:BLUE);
+  Plotly.react('model-acc',[{type:'bar',x:names,y:accs,marker:{color:colors},text:accs.map(v=>v+'%'),textposition:'outside'}],
+    {...LAY({margin:{t:20,b:60,l:40,r:10}}),yaxis:{...LAY().yaxis,range:[90,101],title:{text:'Accuracy (%)',font:{size:10}}}},P);
+  Plotly.react('model-f1',[{type:'bar',x:names,y:f1s,marker:{color:names.map(n=>MODELS[n].best?GREEN:BLUE)},text:f1s.map(v=>v+'%'),textposition:'outside'}],
+    {...LAY({margin:{t:20,b:60,l:40,r:10}}),yaxis:{...LAY().yaxis,range:[90,101],title:{text:'F1 Score (%)',font:{size:10}}}},P);
+  const metrics=['Accuracy','Precision','Recall','F1','AUC'];
+  const traces=names.map((name,i)=>({type:'scatterpolar',
+    r:[MODELS[name].accuracy,MODELS[name].precision,MODELS[name].recall,MODELS[name].f1,MODELS[name].auc],
+    theta:metrics,fill:'toself',name:name,opacity:0.7,line:{color:[BLUE,AMBER,CYAN][i]}}));
+  Plotly.react('model-radar',traces,{...LAY({margin:{t:30,b:30,l:30,r:30}}),
+    polar:{radialaxis:{visible:true,range:[90,101],gridcolor:GRID},bgcolor:'transparent'},
+    showlegend:true,legend:{font:{size:10},orientation:'h',x:0.5,xanchor:'center',y:-0.05}},P);
+}
+
+// ── EXPLAINABILITY ────────────────────────────────────────────────
+function drawExplainability(){
+  const features=['Flow Duration','Fwd Pkt Len Mean','Bwd Pkt Len Max','Flow Bytes/s','Flow Packets/s','Init Win Bytes Fwd','PSH Flag Count','Avg Fwd Seg Size','ACK Flag Count','Idle Mean'];
+  const values=[0.312,0.248,0.198,0.187,0.165,0.143,0.121,0.109,0.094,0.082];
+  Plotly.react('shap-chart',[{type:'bar',orientation:'h',y:features,x:values,
+    marker:{color:values.map(v=>v>0.2?RED:v>0.15?AMBER:BLUE)},
+    text:values.map(v=>v.toFixed(3)),textposition:'outside'}],
+    {...LAY({margin:{t:10,b:10,l:160,r:60}}),xaxis:{...LAY().xaxis,title:{text:'Mean |SHAP value|',font:{size:10}}}},P);
+
+  Plotly.react('shap-gini',[{type:'bar',orientation:'h',
+    y:features.slice(0,8),x:[0.189,0.152,0.138,0.124,0.112,0.098,0.087,0.076],
+    marker:{color:PURPLE},
+    text:['18.9%','15.2%','13.8%','12.4%','11.2%','9.8%','8.7%','7.6%'],textposition:'outside'}],
+    {...LAY({margin:{t:10,b:10,l:160,r:60}}),xaxis:{...LAY().xaxis,title:{text:'Gini Importance',font:{size:10}}}},P);
+}
+
+// ── PREDICT ───────────────────────────────────────────────────────
+const EXAMPLES={
+  dos:{duration:250000,fwdLen:0,bwdLen:0,bytes:98450,pkts:394,psh:0},
+  slowloris:{duration:119999000,fwdLen:212,bwdLen:0,bytes:1.67,pkts:0.017,psh:0},
+  benign:{duration:850,fwdLen:512,bwdLen:1024,bytes:24000,pkts:15,psh:12},
+  heartbleed:{duration:22500,fwdLen:149,bwdLen:65535,bytes:3200,pkts:8.2,psh:2}
+};
+function loadExample(type){
+  const e=EXAMPLES[type];
+  document.getElementById('f-duration').value=e.duration;
+  document.getElementById('f-fwd-len').value=e.fwdLen;
+  document.getElementById('f-bwd-len').value=e.bwdLen;
+  document.getElementById('f-bytes').value=e.bytes;
+  document.getElementById('f-pkts').value=e.pkts;
+  document.getElementById('f-psh').value=e.psh;
+}
+// ── LIVE PREDICT via FastAPI ──────────────────────────────────────
+async function runPredict(){
+  const btn=document.querySelector('.predict-btn');
+  btn.textContent='⏳ Analyzing...';btn.disabled=true;
+
+  const features=[
+    parseFloat(document.getElementById('f-duration').value)||0,
+    parseFloat(document.getElementById('f-fwd-len').value)||0,
+    parseFloat(document.getElementById('f-bwd-len').value)||0,
+    parseFloat(document.getElementById('f-bytes').value)||0,
+    parseFloat(document.getElementById('f-pkts').value)||0,
+    parseFloat(document.getElementById('f-psh').value)||0,
+  ];
+
+  let isAttack, confidence, prediction;
+
+  try {
+    const res=await fetch('/predict',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({features})
+    });
+    if(!res.ok) throw new Error('API error '+res.status);
+    const data=await res.json();
+    isAttack=data.is_attack;
+    confidence=data.confidence;
+    prediction=data.prediction;
+  } catch(err) {
+    // Fallback: rule-based demo if API not reachable (e.g. opened as file)
+    console.warn('API unreachable, using demo mode:',err.message);
+    const [dur,,,bytes,pkts]=features;
+    let score=0;
+    if(dur>50000)score+=0.25;if(pkts>100)score+=0.30;if(bytes>50000)score+=0.20;if(dur>1000000)score+=0.20;
+    isAttack=score>=0.4;
+    confidence=isAttack?Math.min(0.97,0.75+score*0.15):Math.min(0.99,0.88+(1-score)*0.1);
+    prediction=isAttack?'Attack Detected (demo)':'Benign Traffic (demo)';
+  }
+
+  btn.textContent='🔍 Analyze Traffic Flow';btn.disabled=false;
+  const resultEl=document.getElementById('predict-result');
+  resultEl.className='predict-result '+(isAttack?'attack':'benign');
+  resultEl.style.display='block';
+  document.getElementById('result-icon').textContent=isAttack?'🚨':'✅';
+  document.getElementById('result-label').textContent=prediction;
+  document.getElementById('result-label').style.color=isAttack?RED:GREEN;
+  document.getElementById('result-conf').innerHTML='Confidence: <span class="conf-highlight" style="color:'+(isAttack?RED:GREEN)+'">'+(confidence*100).toFixed(1)+'%</span>';
+  document.getElementById('result-detail').textContent=isAttack?
+    'Suspicious traffic pattern. Possible DoS/flooding attack. Recommend blocking source IP.':
+    'Traffic matches normal behavior. No threat indicators found.';
+}
+
+// ── DYNAMIC INIT — fetch real metrics from FastAPI ─────────────────
+let REAL_METRICS=null;
+
+async function loadMetrics(){
+  try {
+    const res=await fetch('/metrics');
+    if(!res.ok) throw new Error('no metrics endpoint');
+    REAL_METRICS=await res.json();
+    console.log('✅ Loaded real metrics from FastAPI');
+    applyRealMetrics();
+  } catch(e){
+    console.warn('⚠️ Using demo metrics (run FastAPI to get real values)');
+  }
+}
+
+function applyRealMetrics(){
+  if(!REAL_METRICS) return;
+  const m=REAL_METRICS.models||{};
+  const rf=m['random_forest']||m['rf']||null;
+  const lr=m['logistic_regression']||m['lr']||null;
+  const mlp=m['mlp']||null;
+  const cm=REAL_METRICS.confusion_matrix||null;
+  const cv=REAL_METRICS.cv_scores||[];
+  const ds=REAL_METRICS.dataset||{};
+
+  // Update KPI cards on overview page
+  if(rf){
+    setKPI('kpi-rf-acc', rf.accuracy+'%');
+    setKPI('kpi-rf-f1',  rf.f1+'%');
+  }
+  if(ds.total) setKPI('kpi-total', ds.total.toLocaleString());
+  if(ds.test_size) setKPI('kpi-test', ds.test_size.toLocaleString());
+
+  // Update confusion matrix cells
+  if(cm){
+    setEl('cm-tp',cm.tp.toLocaleString());
+    setEl('cm-fp',cm.fp.toLocaleString());
+    setEl('cm-fn',cm.fn.toLocaleString());
+    setEl('cm-tn',cm.tn.toLocaleString());
+    const fpr=cm.tn>0?(cm.fp/(cm.fp+cm.tn)*100).toFixed(2)+'%':'—';
+    const fnr=cm.tp>0?(cm.fn/(cm.fn+cm.tp)*100).toFixed(2)+'%':'—';
+    setEl('cm-fpr',fpr); setEl('cm-fnr',fnr);
+  }
+
+  // Redraw model charts with real numbers
+  if(rf&&lr&&mlp) redrawModelCharts({lr,rf,mlp});
+
+  // Redraw CV chart
+  if(cv.length) redrawCVChart(cv);
+}
+
+function setEl(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+function setKPI(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+
+function redrawModelCharts(m){
+  const names=['Logistic Reg.','Random Forest','MLP'];
+  const accs=[m.lr.accuracy,m.rf.accuracy,m.mlp.accuracy];
+  const f1s=[m.lr.f1,m.rf.f1,m.mlp.f1];
+  const colors=[BLUE,AMBER,CYAN];
+  if(document.getElementById('model-acc'))
+    Plotly.react('model-acc',[{type:'bar',x:names,y:accs,marker:{color:colors},text:accs.map(v=>v+'%'),textposition:'outside'}],
+      {...LAY({margin:{t:20,b:60,l:40,r:10}}),yaxis:{...LAY().yaxis,range:[Math.min(...accs)-5,101],title:{text:'Accuracy (%)',font:{size:10}}}},P);
+  if(document.getElementById('model-f1'))
+    Plotly.react('model-f1',[{type:'bar',x:names,y:f1s,marker:{color:[BLUE,GREEN,CYAN]},text:f1s.map(v=>v+'%'),textposition:'outside'}],
+      {...LAY({margin:{t:20,b:60,l:40,r:10}}),yaxis:{...LAY().yaxis,range:[Math.min(...f1s)-5,101],title:{text:'F1 Score (%)',font:{size:10}}}},P);
+}
+
+function redrawCVChart(scores){
+  if(!document.getElementById('cv-chart')) return;
+  const mean=(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2);
+  const folds=scores.map((_,i)=>'Fold '+(i+1));
+  Plotly.react('cv-chart',[
+    {type:'bar',x:folds,y:scores,marker:{color:scores.map((_,i)=>i===scores.indexOf(Math.max(...scores))?AMBER:BLUE)},
+     text:scores.map(v=>v.toFixed(2)+'%'),textposition:'outside'},
+    {type:'scatter',x:folds,y:scores.map(()=>parseFloat(mean)),mode:'lines',name:'Mean ('+mean+'%)',
+     line:{color:RED,dash:'dot',width:2}}
+  ],{...LAY({margin:{t:20,b:30,l:50,r:10}}),
+     yaxis:{...LAY().yaxis,range:[Math.min(...scores)-0.2,Math.max(...scores)+0.3],title:{text:'Accuracy (%)',font:{size:10}}},
+     showlegend:true,legend:{font:{size:9}}},P);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+drawOverview();
+loadMetrics();
+</script>
+</body>
+</html>

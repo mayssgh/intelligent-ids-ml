@@ -3,69 +3,66 @@ from models import get_models, train_models
 from evaluation import evaluate_all_models
 from explainability import explain_model
 from sklearn.model_selection import cross_val_score
-
+from collections import Counter
+from imblearn.over_sampling import SMOTE
 import joblib
 import os
 
-# CONFIG
 FILE_PATH = "data/raw/Wednesday-workingHours.pcap_ISCX.csv"
-TARGET = "Label"
+TARGET    = "Label"
 
 
 def main():
     print("Starting training pipeline...")
 
-    # Preprocess data
-    X_train, X_test, y_train, y_test, scaler, encoders = preprocess_pipeline(
-        FILE_PATH, TARGET
-    )
-    from collections import Counter
+    # Preprocess
+    X_train, X_test, y_train, y_test, scaler, encoders = preprocess_pipeline(FILE_PATH, TARGET)
 
     print("\nClass distribution BEFORE balancing:")
     print(Counter(y_train))
 
-    from imblearn.over_sampling import SMOTE
-
     print("\nApplying SMOTE to balance classes...")
-
     smote = SMOTE(random_state=42)
     X_train, y_train = smote.fit_resample(X_train, y_train)
 
     print("\nClass distribution AFTER balancing:")
-    print(Counter(y_train))
+    after = Counter(y_train)
+    print(after)
 
-    # Get models
-    models = get_models()
-
-    # Train models
+    # Train
+    models        = get_models()
     trained_models = train_models(models, X_train, y_train)
+
+    # Cross-validation on Random Forest
     print("\nPerforming Cross-Validation on Random Forest...")
-
-    rf_model = trained_models["random_forest"]
-
+    rf_model  = trained_models["random_forest"]
     cv_scores = cross_val_score(rf_model, X_train, y_train, cv=5)
+    print("CV scores:", cv_scores)
+    print("Mean CV :", cv_scores.mean())
 
-    print("Cross-validation scores:", cv_scores)
-    print("Mean CV score:", cv_scores.mean())
-
-    print("\nTraining completed.")
-
-    # Evaluate models
-    results = evaluate_all_models(trained_models, X_test, y_test)
-
-    # 🔥 Select best model
-    best_model = trained_models["random_forest"]
-
-    # ✅ Ensure models folder exists BEFORE saving SHAP
     os.makedirs("models", exist_ok=True)
 
-    # 🔍 Explain model (use small sample for speed)
-    explain_model(best_model, X_test[:200])
+    # SHAP explainability
+    explain_model(rf_model, X_test[:200])
 
-    # 💾 Save model safely
-    os.makedirs("models", exist_ok=True)
-    joblib.dump(best_model, "models/random_forest.pkl")
-    print("✅ Model saved in models/random_forest.pkl")
+    # Evaluate — now also saves models/metrics.json for the dashboard
+    dataset_info = {
+        "total":      int(len(X_train) + len(X_test)),
+        "train_size": int(len(X_train)),
+        "test_size":  int(len(X_test)),
+        "after_smote":int(len(y_train)),
+        "classes":    {str(k): int(v) for k, v in Counter(y_test).items()}
+    }
+
+    results = evaluate_all_models(
+        trained_models, X_test, y_test,
+        cv_scores=cv_scores,
+        dataset_info=dataset_info
+    )
+
+    # Save model
+    joblib.dump(rf_model, "models/random_forest.pkl")
+    print("✅ Model saved → models/random_forest.pkl")
 
     return results
 
